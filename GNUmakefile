@@ -3,8 +3,8 @@ Default: all
 TOP=../..
 
 ifndef JAVA_HOME
-#    JAVA_HOME=$(TOP)/tools/jdk1.6.0_26
-    JAVA_HOME=$(TOP)/tools/jdk1.7.0_03
+    JAVA_HOME=$(TOP)/tools/jdk1.6.0_26
+#    JAVA_HOME=$(TOP)/tools/jdk1.7.0_03
 endif
 
 ifeq (Windows, $(findstring Windows,$(OS)))
