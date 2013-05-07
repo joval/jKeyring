@@ -113,7 +113,7 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	return "general"; // NOI18N
     }
 
-    public byte[] encrypt(char[] cleartext) throws Exception {
+    public byte[] encrypt(byte[] cleartext) throws Exception {
 	try {
 	    return doEncrypt(cleartext);
 	} catch (Exception x) {
@@ -122,7 +122,7 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	}
     }
 
-    public char[] decrypt(byte[] ciphertext) throws Exception {
+    public byte[] decrypt(byte[] ciphertext) throws Exception {
 	AtomicBoolean callEncryptionChanging = new AtomicBoolean();
 	try {
 	    return doDecrypt(ciphertext);
@@ -147,20 +147,14 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	unlocked = true;
     }
 
-    byte[] doEncrypt(char[] cleartext) throws Exception {
+    byte[] doEncrypt(byte[] cleartext) throws Exception {
 	assert unlocked;
-	byte[] cleartextB = Utils.chars2Bytes(cleartext);
-	byte[] result = encrypt.doFinal(cleartextB);
-	Arrays.fill(cleartextB, (byte) 0);
-	return result;
+	return encrypt.doFinal(cleartext);
     }
 
-    char[] doDecrypt(byte[] ciphertext) throws Exception {
+    byte[] doDecrypt(byte[] ciphertext) throws Exception {
 	assert unlocked;
-	byte[] result = decrypt.doFinal(ciphertext);
-	char[] cleartext = Utils.bytes2Chars(result);
-	Arrays.fill(result, (byte) 0);
-	return cleartext;
+	return decrypt.doFinal(ciphertext);
     }
 
     public boolean decryptionFailed() {

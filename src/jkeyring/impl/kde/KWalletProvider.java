@@ -45,6 +45,7 @@ package jkeyring.impl.kde;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.MissingResourceException;
@@ -58,23 +59,26 @@ import jkeyring.intf.IKeyring;
  * @author psychollek, ynov
  */
 public class KWalletProvider implements IKeyring {
-    private char[] handler = "0".toCharArray();
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+    private static final String appName = "jKeyring";
+    private static final String defaultLocalWallet = "kdewallet";
+
+    private String handler = "0";
     private boolean timeoutHappened = false;
-    private char[] defaultLocalWallet = "kdewallet".toCharArray();
 
     @Override
-    public boolean enabled(){
+    public boolean enabled() {
         CommandResult result = runCommand("isEnabled");
-        if(new String(result.retVal).equals("true")) {        
+        if(new String(result.retVal, UTF8).equals("true")) {        
             return updateHandler();
         }                   
         return false;
-    };
+    }
 
     @Override
-    public char[] read(String key){
+    public byte[] read(String key) {
         if (updateHandler()){
-            CommandResult result = runCommand("readPassword", handler, getApplicationName(), key.toCharArray(), getApplicationName());
+            CommandResult result = runCommand("readPassword", handler, appName, key, appName);
             if (result.exitCode != 0){
                 warning("read action returned not 0 exitCode");
             }
@@ -82,75 +86,71 @@ public class KWalletProvider implements IKeyring {
         }
         return null;
         //throw new KwalletException("read");
-    };
+    }
 
     @Override
-    public void save(String key, char[] password, String description){
+    public void save(String key, byte[] data, String description) {
         //description is forgoten ! kdewallet dosen't have any facility to store
         //it by default and I don't want to do it by adding new fields to kwallet
-        if (updateHandler()){
-            CommandResult result = runCommand("writePassword", handler , getApplicationName()
-                    , key.toCharArray(), password , getApplicationName());
-            if (result.exitCode != 0 || (new String(result.retVal)).equals("-1")){
+        if (updateHandler()) {
+            CommandResult result = runCommand("writePassword", handler , appName, key, new String(data, UTF8), appName);
+            if (result.exitCode != 0 || (new String(result.retVal, UTF8)).equals("-1")){
                 warning("save action failed");
             }
             return;
         }
         //throw new KwalletException("save");
-    };
+    }
 
     @Override
-    public void delete(String key){
-        if (updateHandler()){
-            CommandResult result = runCommand("removeEntry" ,handler,
-            getApplicationName() , key.toCharArray() , getApplicationName());
-             if (result.exitCode != 0  || (new String(result.retVal)).equals("-1")){
+    public void delete(String key) {
+        if (updateHandler()) {
+            CommandResult result = runCommand("removeEntry", handler, appName, key, appName);
+            if (result.exitCode != 0  || (new String(result.retVal, UTF8)).equals("-1")) {
                 warning("delete action failed");
             }
             return;
         }
         //throw new KwalletException("delete");
-    };
+    }
 
-    private boolean updateHandler(){
+    private boolean updateHandler() {
         if(timeoutHappened) {
             return false;
         }
-        handler = new String(handler).equals("")? "0".toCharArray() : handler;
-        CommandResult result = runCommand("isOpen",handler);          
-        if(new String(result.retVal).equals("true")){
+        handler = handler.equals("") ? "0" : handler;
+        CommandResult result = runCommand("isOpen", handler);
+        if(new String(result.retVal, UTF8).equals("true")) {
             return true;
         }
-        char[] localWallet = defaultLocalWallet;
+        String localWallet = defaultLocalWallet;
         result = runCommand("localWallet");                      
-        if(result.exitCode == 0) {                    
-            localWallet = result.retVal;
+        if (result.exitCode == 0) {                    
+            localWallet = new String(result.retVal, UTF8);
         }
             
-        if(new String(localWallet).contains(".service")) {            
+        if (localWallet.contains(".service")) {
             //Temporary workaround for the bug in kdelibs/kdeui/util/kwallet.cpp
             //The bug was fixed http://svn.reviewboard.kde.org/r/5885/diff/
             //but many people currently use buggy kwallet
             return false;
         }
-        result = runCommand("open", localWallet , "0".toCharArray(), getApplicationName());
-        if(result.exitCode == 2) { 
+        result = runCommand("open", localWallet, "0", appName);
+        if (result.exitCode == 2) { 
             warning("time out happened while accessing KWallet");
             //don't try to open KWallet anymore until bug https://bugs.kde.org/show_bug.cgi?id=259229 is fixed
             timeoutHappened = true;
             return false;
         }      
-        if(result.exitCode != 0 || new String(result.retVal).equals("-1")) {
+        if(result.exitCode != 0 || new String(result.retVal, UTF8).equals("-1")) {
             warning("failed to access KWallet");
             return false;
         }         
-        handler = result.retVal;
+        handler = new String(result.retVal, UTF8);
         return true;
     }
-          
-    
 
-    private CommandResult runCommand(String command,char[]... commandArgs) {
+    private CommandResult runCommand(String command, String... commandArgs) {
         String[] argv = new String[commandArgs.length+4];
         argv[0] = "qdbus";
         argv[1] = "org.kde.kwalletd";
@@ -159,7 +159,7 @@ public class KWalletProvider implements IKeyring {
         for (int i = 0; i < commandArgs.length; i++) {
             //unfortunatelly I cannot pass char[] to the exec in any way - so this poses a security issue with passwords in String() !
             //TODO: find a way to avoid changing char[] into String
-            argv[i+4] = new String(commandArgs[i]);
+            argv[i+4] = commandArgs[i];
         }
         Runtime rt = Runtime.getRuntime();
         String retVal = "";
@@ -194,11 +194,7 @@ public class KWalletProvider implements IKeyring {
         } catch (IOException ex) {
 	    ex.printStackTrace();
         }
-        return new CommandResult(exitCode, retVal.trim().toCharArray(), errVal.trim());
-    }    
-
-    private char[] getApplicationName(){
-        return "NetBeans IDE".toCharArray(); // NOI18N
+        return new CommandResult(exitCode, retVal.trim().getBytes(UTF8), errVal.trim());
     }
 
     private void warning(String descr) {
@@ -207,10 +203,10 @@ public class KWalletProvider implements IKeyring {
   
     private class CommandResult {
         private int exitCode;
-        private char[] retVal;
+        private byte[] retVal;
         private String errVal;
 
-        public CommandResult(int exitCode, char[] retVal, String errVal) {
+        public CommandResult(int exitCode, byte[] retVal, String errVal) {
             this.exitCode = exitCode;
             this.retVal = retVal;
             this.errVal = errVal;

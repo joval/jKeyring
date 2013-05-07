@@ -42,6 +42,7 @@
 
 package jkeyring.impl.gnome;
 
+import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.MissingResourceException;
 import java.util.logging.Level;
@@ -54,6 +55,7 @@ import static jkeyring.impl.gnome.GnomeKeyringLibrary.*;
 
 public class GnomeProvider implements IKeyring {
     private static final String KEY = "key"; // NOI18N
+    private static final Charset UTF16 = Charset.forName("UTF-16");
 
     public @Override boolean enabled() {
         boolean envVarSet = false;
@@ -83,7 +85,7 @@ public class GnomeProvider implements IKeyring {
         }
     }
 
-    public @Override char[] read(String key) {
+    public @Override byte[] read(String key) {
         Pointer[] found = new Pointer[1];
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
@@ -98,7 +100,7 @@ public class GnomeProvider implements IKeyring {
                     GnomeKeyringFound result = LIBRARY.g_list_nth_data(found[0], 0);
                     if (result != null) {
                         if (result.secret != null) {
-                            return result.secret.toCharArray();
+                            return result.secret.getBytes(UTF16);
                         } else {
                             delete(key);
                         }
@@ -111,13 +113,13 @@ public class GnomeProvider implements IKeyring {
         return null;
     }
 
-    public @Override void save(String key, char[] password, String description) {
+    public @Override void save(String key, byte[] data, String description) {
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
             LIBRARY.gnome_keyring_attribute_list_append_string(attributes, KEY, key);
             int[] item_id = new int[1];
             error(GnomeKeyringLibrary.LIBRARY.gnome_keyring_item_create_sync(
-                    null, GNOME_KEYRING_ITEM_GENERIC_SECRET, description != null ? description : key, attributes, new String(password), true, item_id));
+                    null, GNOME_KEYRING_ITEM_GENERIC_SECRET, description != null ? description : key, attributes, new String(data, UTF16), true, item_id));
         } finally {
             LIBRARY.gnome_keyring_attribute_list_free(attributes);
         }
@@ -148,7 +150,7 @@ public class GnomeProvider implements IKeyring {
         }
         if (id > 0) {
             if ("SunOS".equals(System.getProperty("os.name")) && "5.10".equals(System.getProperty("os.version"))) { // #185698
-                save(key, new char[0], null); // gnome_keyring_item_delete(null, id, null, null, null) does not seem to do anything
+                save(key, new byte[0], null); // gnome_keyring_item_delete(null, id, null, null, null) does not seem to do anything
             } else {
                 error(GnomeKeyringLibrary.LIBRARY.gnome_keyring_item_delete_sync(null, id));
             }

@@ -81,7 +81,7 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
         return false;
     }
 
-    public char[] read(String key) {
+    public byte[] read(String key) {
         byte[] ciphertext = prefs().getByteArray(key, null);
         if (ciphertext == null) {
             return null;
@@ -94,8 +94,8 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
         return null;
     }
 
-    public void save(String key, char[] password, String description) {
-        _save(key, password, description);
+    public void save(String key, byte[] data, String description) {
+        _save(key, data, description);
     }
 
     public void delete(String key) {
@@ -108,7 +108,7 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
 
     // encryption changing
     public Void call() throws Exception {
-        Map<String,char[]> saved = new HashMap<String,char[]>();
+        Map<String, byte[]> saved = new HashMap<String, byte[]>();
         Preferences prefs = prefs();
         for (String k : prefs.keys()) {
             if (k.endsWith(DESCRIPTION)) {
@@ -121,7 +121,7 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
             saved.put(k, encryption.decrypt(ciphertext));
         }
         encryption.encryptionChanged();
-        for (Map.Entry<String,char[]> entry : saved.entrySet()) {
+        for (Map.Entry<String, byte[]> entry : saved.entrySet()) {
             prefs.putByteArray(entry.getKey(), encryption.encrypt(entry.getValue()));
         }
         return null;
@@ -135,7 +135,7 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
             encryption.freshKeyring(true);
             byte[] randomArray = new byte[36];
             new SecureRandom().nextBytes(randomArray);
-            if (_save(SAMPLE_KEY, (SAMPLE_KEY + new String(randomArray)).toCharArray(), "Sample key")) {
+            if (_save(SAMPLE_KEY, (SAMPLE_KEY + new String(randomArray)).getBytes(), "Sample key")) {
                 return true;
             } else {
                 return false;
@@ -159,10 +159,10 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
         return Utils.userPreferences().node("jKeyring").node(encryption.id());
     }
 
-    private boolean _save(String key, char[] password, String description) {
+    private boolean _save(String key, byte[] data, String description) {
         Preferences prefs = prefs();
         try {
-            prefs.putByteArray(key, encryption.encrypt(password));
+            prefs.putByteArray(key, encryption.encrypt(data));
         } catch (Exception x) {
             x.printStackTrace();
             return false;

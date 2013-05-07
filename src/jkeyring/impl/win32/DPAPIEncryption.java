@@ -80,11 +80,9 @@ public class DPAPIEncryption implements IEncryptionProvider {
         return "win32"; // NOI18N
     }
 
-    public byte[] encrypt(char[] cleartext) throws Exception {
-        byte[] cleartextB = Utils.chars2Bytes(cleartext);
+    public byte[] encrypt(byte[] cleartext) throws Exception {
         CryptIntegerBlob input = new CryptIntegerBlob();
-        input.store(cleartextB);
-        Arrays.fill(cleartextB, (byte) 0);
+        input.store(cleartext);
         CryptIntegerBlob output = new CryptIntegerBlob();
         if (!CryptLib.INSTANCE.CryptProtectData(input, null, null, null, null, 0, output)) {
             throw new Exception("CryptProtectData failed: " + Native.getLastError());
@@ -93,18 +91,15 @@ public class DPAPIEncryption implements IEncryptionProvider {
         return output.load();
     }
 
-    public char[] decrypt(byte[] ciphertext) throws Exception {
+    public byte[] decrypt(byte[] ciphertext) throws Exception {
         CryptIntegerBlob input = new CryptIntegerBlob();
         input.store(ciphertext);
         CryptIntegerBlob output = new CryptIntegerBlob();
         if (!CryptLib.INSTANCE.CryptUnprotectData(input, null, null, null, null, 0, output)) {
             throw new Exception("CryptUnprotectData failed: " + Native.getLastError());
         }
-        byte[] result = output.load();
+        return output.load();
         // XXX gives CCE because not a Memory: output.zero();
-        char[] cleartext = Utils.bytes2Chars(result);
-        Arrays.fill(result, (byte)0);
-        return cleartext;
     }
 
     public boolean decryptionFailed() {

@@ -77,7 +77,7 @@ public interface IEncryptionProvider {
      * @return encrypted data
      * @throws Exception if anything goes wrong
      */
-    byte[] encrypt(char[] cleartext) throws Exception;
+    byte[] encrypt(byte[] cleartext) throws Exception;
 
     /**
      * Decrypt a password or other sensitive data.
@@ -85,7 +85,7 @@ public interface IEncryptionProvider {
      * @return cleartext (may be nulled out after this call)
      * @throws Exception if anything goes wrong
      */
-    char[] decrypt(byte[] ciphertext) throws Exception;
+    byte[] decrypt(byte[] ciphertext) throws Exception;
 
     /**
      * Called if {@link #decrypt} produced incorrect results on a sample key.

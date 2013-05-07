@@ -60,18 +60,18 @@ public interface IKeyring {
      * @param key the identifier of the key
      * @return its value if found (elements may be later nulled out), else null if not present
      */
-    char[] read(String key);
+    byte[] read(String key);
 
     /**
      * Save a key to the ring.
      * If it could not be saved, do nothing.
      * If the key already existed, overwrite the password.
      * @param key a key identifier
-     * @param password the password or other sensitive information associated with the key
-     *                 (elements will be later nulled out)
-     * @param description a user-visible description of the key (may be null)
+     * @param data the password or other sensitive information associated with the key
+     *             (elements will be later nulled out)
+     * @param description a user-visible description of the key (optional - may be null)
      */
-    void save(String key, char[] password, String description);
+    void save(String key, byte[] data, String description);
 
     /**
      * Delete a key from the ring.
