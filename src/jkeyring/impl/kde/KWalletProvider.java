@@ -53,13 +53,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import jkeyring.intf.IKeyring;
+import jkeyring.impl.Base64;
 
 /**
  *
  * @author psychollek, ynov
  */
 public class KWalletProvider implements IKeyring {
-    private static final Charset UTF8 = Charset.forName("UTF-8");
     private static final String appName = "jKeyring";
     private static final String defaultLocalWallet = "kdewallet";
 
@@ -69,7 +69,7 @@ public class KWalletProvider implements IKeyring {
     @Override
     public boolean enabled() {
         CommandResult result = runCommand("isEnabled");
-        if(new String(result.retVal, UTF8).equals("true")) {        
+        if(result.retVal.equals("true")) {        
             return updateHandler();
         }                   
         return false;
@@ -82,7 +82,11 @@ public class KWalletProvider implements IKeyring {
             if (result.exitCode != 0){
                 warning("read action returned not 0 exitCode");
             }
-            return result.retVal.length > 0 ? result.retVal : null;
+	    try {
+        	return result.retVal.length() > 0 ? Base64.decode(result.retVal) : null;
+	    } catch (IOException e) {
+		e.printStackTrace();
+	    }
         }
         return null;
         //throw new KwalletException("read");
@@ -93,8 +97,8 @@ public class KWalletProvider implements IKeyring {
         //description is forgoten ! kdewallet dosen't have any facility to store
         //it by default and I don't want to do it by adding new fields to kwallet
         if (updateHandler()) {
-            CommandResult result = runCommand("writePassword", handler , appName, key, new String(data, UTF8), appName);
-            if (result.exitCode != 0 || (new String(result.retVal, UTF8)).equals("-1")){
+            CommandResult result = runCommand("writePassword", handler , appName, key, Base64.encodeBytes(data), appName);
+            if (result.exitCode != 0 || result.retVal.equals("-1")) {
                 warning("save action failed");
             }
             return;
@@ -106,7 +110,7 @@ public class KWalletProvider implements IKeyring {
     public void delete(String key) {
         if (updateHandler()) {
             CommandResult result = runCommand("removeEntry", handler, appName, key, appName);
-            if (result.exitCode != 0  || (new String(result.retVal, UTF8)).equals("-1")) {
+            if (result.exitCode != 0  || result.retVal.equals("-1")) {
                 warning("delete action failed");
             }
             return;
@@ -120,13 +124,13 @@ public class KWalletProvider implements IKeyring {
         }
         handler = handler.equals("") ? "0" : handler;
         CommandResult result = runCommand("isOpen", handler);
-        if(new String(result.retVal, UTF8).equals("true")) {
+        if (result.retVal.equals("true")) {
             return true;
         }
         String localWallet = defaultLocalWallet;
         result = runCommand("localWallet");                      
         if (result.exitCode == 0) {                    
-            localWallet = new String(result.retVal, UTF8);
+            localWallet = result.retVal;
         }
             
         if (localWallet.contains(".service")) {
@@ -142,11 +146,11 @@ public class KWalletProvider implements IKeyring {
             timeoutHappened = true;
             return false;
         }      
-        if(result.exitCode != 0 || new String(result.retVal, UTF8).equals("-1")) {
+        if(result.exitCode != 0 || result.retVal.equals("-1")) {
             warning("failed to access KWallet");
             return false;
         }         
-        handler = new String(result.retVal, UTF8);
+        handler = result.retVal;
         return true;
     }
 
@@ -194,7 +198,7 @@ public class KWalletProvider implements IKeyring {
         } catch (IOException ex) {
 	    ex.printStackTrace();
         }
-        return new CommandResult(exitCode, retVal.trim().getBytes(UTF8), errVal.trim());
+        return new CommandResult(exitCode, retVal.trim(), errVal.trim());
     }
 
     private void warning(String descr) {
@@ -203,10 +207,9 @@ public class KWalletProvider implements IKeyring {
   
     private class CommandResult {
         private int exitCode;
-        private byte[] retVal;
-        private String errVal;
+        private String retVal, errVal;
 
-        public CommandResult(int exitCode, byte[] retVal, String errVal) {
+        public CommandResult(int exitCode, String retVal, String errVal) {
             this.exitCode = exitCode;
             this.retVal = retVal;
             this.errVal = errVal;
