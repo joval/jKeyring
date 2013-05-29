@@ -42,6 +42,7 @@
 
 package jkeyring.impl.gnome;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.MissingResourceException;
@@ -51,11 +52,11 @@ import java.util.logging.Logger;
 import com.sun.jna.Pointer;
 
 import jkeyring.intf.IKeyring;
+import jkeyring.impl.Base64;
 import static jkeyring.impl.gnome.GnomeKeyringLibrary.*;
 
 public class GnomeProvider implements IKeyring {
     private static final String KEY = "key"; // NOI18N
-    private static final Charset UTF16 = Charset.forName("UTF-16");
 
     public @Override boolean enabled() {
         boolean envVarSet = false;
@@ -100,7 +101,12 @@ public class GnomeProvider implements IKeyring {
                     GnomeKeyringFound result = LIBRARY.g_list_nth_data(found[0], 0);
                     if (result != null) {
                         if (result.secret != null) {
-                            return result.secret.getBytes(UTF16);
+			    try {
+                        	return Base64.decode(result.secret);
+			    } catch (IOException e) {
+				e.printStackTrace();
+				return null;
+			    }
                         } else {
                             delete(key);
                         }
@@ -119,7 +125,7 @@ public class GnomeProvider implements IKeyring {
             LIBRARY.gnome_keyring_attribute_list_append_string(attributes, KEY, key);
             int[] item_id = new int[1];
             error(GnomeKeyringLibrary.LIBRARY.gnome_keyring_item_create_sync(
-                    null, GNOME_KEYRING_ITEM_GENERIC_SECRET, description != null ? description : key, attributes, new String(data, UTF16), true, item_id));
+                    null, GNOME_KEYRING_ITEM_GENERIC_SECRET, description != null ? description : key, attributes, Base64.encodeBytes(data), true, item_id));
         } finally {
             LIBRARY.gnome_keyring_attribute_list_free(attributes);
         }

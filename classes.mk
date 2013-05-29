@@ -6,6 +6,7 @@ CLASSES=\
 	jkeyring.impl.kde.KWalletProvider	\
 	jkeyring.impl.mac.MacProvider	\
 	jkeyring.impl.mac.SecurityLibrary	\
+	jkeyring.impl.Base64	\
 	jkeyring.impl.Utils	\
 	jkeyring.impl.win32.DPAPIEncryption	\
 	jkeyring.intf.IEncryptionProvider	\
