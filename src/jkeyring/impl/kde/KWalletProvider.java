@@ -76,46 +76,41 @@ public class KWalletProvider implements IKeyring {
     }
 
     @Override
-    public byte[] read(String key) {
+    public byte[] read(String key) throws IOException {
         if (updateHandler()){
             CommandResult result = runCommand("readPassword", handler, appName, key, appName);
             if (result.exitCode != 0){
-                warning("read action returned not 0 exitCode");
+                throw new KwalletException("read action returned not 0 exitCode");
             }
-	    try {
-        	return result.retVal.length() > 0 ? Base64.decode(result.retVal) : null;
-	    } catch (IOException e) {
-		e.printStackTrace();
-	    }
+            return result.retVal.length() > 0 ? Base64.decode(result.retVal) : null;
         }
-        return null;
-        //throw new KwalletException("read");
+        throw new KwalletException("read");
     }
 
     @Override
-    public void save(String key, byte[] data, String description) {
+    public void save(String key, byte[] data, String description) throws IOException {
         //description is forgoten ! kdewallet dosen't have any facility to store
         //it by default and I don't want to do it by adding new fields to kwallet
         if (updateHandler()) {
             CommandResult result = runCommand("writePassword", handler , appName, key, Base64.encodeBytes(data), appName);
             if (result.exitCode != 0 || result.retVal.equals("-1")) {
-                warning("save action failed");
+                throw new KwalletException("save action failed");
             }
             return;
         }
-        //throw new KwalletException("save");
+        throw new KwalletException("save");
     }
 
     @Override
-    public void delete(String key) {
+    public void delete(String key) throws IOException {
         if (updateHandler()) {
             CommandResult result = runCommand("removeEntry", handler, appName, key, appName);
             if (result.exitCode != 0  || result.retVal.equals("-1")) {
-                warning("delete action failed");
+                throw new KwalletException("delete action failed");
             }
             return;
         }
-        //throw new KwalletException("delete");
+        throw new KwalletException("delete");
     }
 
     private boolean updateHandler() {
@@ -214,5 +209,11 @@ public class KWalletProvider implements IKeyring {
             this.retVal = retVal;
             this.errVal = errVal;
         }                        
+    }
+
+    static class KwalletException extends IOException {
+	KwalletException(String message) {
+	    super(message);
+	}
     }
 }

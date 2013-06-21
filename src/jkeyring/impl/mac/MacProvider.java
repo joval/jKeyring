@@ -42,6 +42,7 @@
 
 package jkeyring.impl.mac;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.logging.Level;
@@ -62,11 +63,11 @@ public class MacProvider implements IKeyring {
         return System.getProperty("os.name").toLowerCase().indexOf("darwin") != -1;
     }
 
-    public byte[] read(String key) {
+    public byte[] read(String key) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         int[] dataLength = new int[1];
         Pointer[] data = new Pointer[1];
-        error("find", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        checkError("find", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
             accountName.length, accountName, dataLength, data, null));
         if (data[0] == null) {
             return null;
@@ -75,44 +76,43 @@ public class MacProvider implements IKeyring {
 	// TBD ought to call SecKeychainItemFreeContent
     }
 
-    public void save(String key, byte[] data, String description) {
+    public void save(String key, byte[] data, String description) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         // Keychain Access seems to expect UTF-8, so do not use Utils.chars2Bytes:
         Pointer[] itemRef = new Pointer[1];
-        error("find (for save)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        checkError("find (for save)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
                     accountName.length, accountName, null, null, itemRef));
         if (itemRef[0] != null) {
-            error("save (update)", SecurityLibrary.LIBRARY.SecKeychainItemModifyContent(itemRef[0], null, data.length, data));
+            checkError("save (update)", SecurityLibrary.LIBRARY.SecKeychainItemModifyContent(itemRef[0], null, data.length, data));
         } else {
-            error("save (new)", SecurityLibrary.LIBRARY.SecKeychainAddGenericPassword(null, serviceName.length, serviceName,
+            checkError("save (new)", SecurityLibrary.LIBRARY.SecKeychainAddGenericPassword(null, serviceName.length, serviceName,
                     accountName.length, accountName, data.length, data, null));
         }
         // TBD use description somehow... better to use SecItemAdd with kSecAttrDescription
     }
 
-    public void delete(String key) {
+    public void delete(String key) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         Pointer[] itemRef = new Pointer[1];
-        error("find (for delete)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        checkError("find (for delete)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
                 accountName.length, accountName, null, null, itemRef));
         if (itemRef[0] != null) {
-            error("delete", SecurityLibrary.LIBRARY.SecKeychainItemDelete(itemRef[0]));
+            checkError("delete", SecurityLibrary.LIBRARY.SecKeychainItemDelete(itemRef[0]));
         }
     }
 
-    private static void error(String msg, int code) {
+    private static void checkError(String msg, int code) throws IOException {
         if (code != 0 && code != /* errSecItemNotFound, always returned from find it seems */-25300) {
             Pointer translated = SecurityLibrary.LIBRARY.SecCopyErrorMessageString(code, null);
-            String str;
             if (translated == null) {
-                str = String.valueOf(code);
+                throw new IOException(String.valueOf(code));
             } else {
                 char[] buf = new char[(int) SecurityLibrary.LIBRARY.CFStringGetLength(translated)];
                 for (int i = 0; i < buf.length; i++) {
                     buf[i] = SecurityLibrary.LIBRARY.CFStringGetCharacterAtIndex(translated, i);
                 }
                 SecurityLibrary.LIBRARY.CFRelease(translated);
-                str = new String(buf) + " (" + code + ")";
+                throw new IOException(new String(buf) + " (" + code + ")");
             }
         }
     }

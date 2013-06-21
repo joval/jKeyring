@@ -42,6 +42,7 @@
 
 package jkeyring.impl.crypto;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -81,17 +82,18 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
         return false;
     }
 
-    public byte[] read(String key) {
+    public byte[] read(String key) throws IOException {
         byte[] ciphertext = prefs().getByteArray(key, null);
         if (ciphertext == null) {
             return null;
         }
         try {
             return encryption.decrypt(ciphertext);
-        } catch (Exception x) {
-            x.printStackTrace();
+        } catch (IOException e) {
+	    throw e;
+        } catch (Exception e) {
+            throw new IOException(e);
         }
-        return null;
     }
 
     public void save(String key, byte[] data, String description) {

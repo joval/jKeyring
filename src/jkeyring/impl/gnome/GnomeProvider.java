@@ -86,7 +86,7 @@ public class GnomeProvider implements IKeyring {
         }
     }
 
-    public @Override byte[] read(String key) {
+    public @Override byte[] read(String key) throws IOException {
         Pointer[] found = new Pointer[1];
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
@@ -101,12 +101,7 @@ public class GnomeProvider implements IKeyring {
                     GnomeKeyringFound result = LIBRARY.g_list_nth_data(found[0], 0);
                     if (result != null) {
                         if (result.secret != null) {
-			    try {
-                        	return Base64.decode(result.secret);
-			    } catch (IOException e) {
-				e.printStackTrace();
-				return null;
-			    }
+                            return Base64.decode(result.secret);
                         } else {
                             delete(key);
                         }
@@ -119,7 +114,7 @@ public class GnomeProvider implements IKeyring {
         return null;
     }
 
-    public @Override void save(String key, byte[] data, String description) {
+    public @Override void save(String key, byte[] data, String description) throws IOException {
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
             LIBRARY.gnome_keyring_attribute_list_append_string(attributes, KEY, key);
@@ -131,7 +126,7 @@ public class GnomeProvider implements IKeyring {
         }
     }
 
-    public @Override void delete(String key) {
+    public @Override void delete(String key) throws IOException {
         Pointer[] found = new Pointer[1];
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
@@ -176,9 +171,13 @@ public class GnomeProvider implements IKeyring {
         "NO_MATCH", // NOI18N
     };
 
-    private static void error(int code) {
-        if (code != 0 && code != 9) {
-            System.err.println("gnome-keyring error: " + ERRORS[code]);
+    private static void error(int code) throws IOException {
+	switch(code) {
+	  case 0:
+	  case 9:
+	    break;
+	  default:
+            throw new IOException("gnome-keyring error: " + ERRORS[code]);
         }
     }
 }

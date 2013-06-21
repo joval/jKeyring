@@ -42,6 +42,8 @@
 
 package jkeyring.intf;
 
+import java.io.IOException;
+
 /**
  * Provider for a keyring.
  */
@@ -60,7 +62,7 @@ public interface IKeyring {
      * @param key the identifier of the key
      * @return its value if found (elements may be later nulled out), else null if not present
      */
-    byte[] read(String key);
+    byte[] read(String key) throws IOException;
 
     /**
      * Save a key to the ring.
@@ -71,12 +73,12 @@ public interface IKeyring {
      *             (elements will be later nulled out)
      * @param description a user-visible description of the key (optional - may be null)
      */
-    void save(String key, byte[] data, String description);
+    void save(String key, byte[] data, String description) throws IOException;
 
     /**
      * Delete a key from the ring.
      * If the key was not in the ring to begin with, do nothing.
      * @param key a key identifier
      */
-    void delete(String key);
+    void delete(String key) throws IOException;
 }
