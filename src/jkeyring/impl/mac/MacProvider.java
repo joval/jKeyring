@@ -60,32 +60,37 @@ public class MacProvider implements IKeyring {
     }
 
     public boolean enabled() {
-        return System.getProperty("os.name").toLowerCase().indexOf("darwin") != -1;
+	String osName = System.getProperty("os.name").toLowerCase();
+        return osName.startsWith("mac") || osName.indexOf("darwin") != -1;
     }
 
     public byte[] read(String key) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         int[] dataLength = new int[1];
         Pointer[] data = new Pointer[1];
-        checkError("find", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        error("find", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
             accountName.length, accountName, dataLength, data, null));
         if (data[0] == null) {
             return null;
-        }
-        return data[0].getByteArray(0, dataLength[0]);
-	// TBD ought to call SecKeychainItemFreeContent
+        } else {
+            byte[] result = data[0].getByteArray(0, dataLength[0]);
+	    byte[] copy = new byte[result.length];
+	    System.arraycopy(result, 0, copy, 0, result.length);
+	    error("free", SecurityLibrary.LIBRARY.SecKeychainItemFreeContent(null, data[0]));
+	    return copy;
+	}
     }
 
     public void save(String key, byte[] data, String description) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         // Keychain Access seems to expect UTF-8, so do not use Utils.chars2Bytes:
         Pointer[] itemRef = new Pointer[1];
-        checkError("find (for save)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        error("find (for save)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
                     accountName.length, accountName, null, null, itemRef));
         if (itemRef[0] != null) {
-            checkError("save (update)", SecurityLibrary.LIBRARY.SecKeychainItemModifyContent(itemRef[0], null, data.length, data));
+            error("save (update)", SecurityLibrary.LIBRARY.SecKeychainItemModifyContent(itemRef[0], null, data.length, data));
         } else {
-            checkError("save (new)", SecurityLibrary.LIBRARY.SecKeychainAddGenericPassword(null, serviceName.length, serviceName,
+            error("save (new)", SecurityLibrary.LIBRARY.SecKeychainAddGenericPassword(null, serviceName.length, serviceName,
                     accountName.length, accountName, data.length, data, null));
         }
         // TBD use description somehow... better to use SecItemAdd with kSecAttrDescription
@@ -94,14 +99,14 @@ public class MacProvider implements IKeyring {
     public void delete(String key) throws IOException {
         byte[] serviceName = key.getBytes(UTF8);
         Pointer[] itemRef = new Pointer[1];
-        checkError("find (for delete)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
+        error("find (for delete)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
                 accountName.length, accountName, null, null, itemRef));
         if (itemRef[0] != null) {
-            checkError("delete", SecurityLibrary.LIBRARY.SecKeychainItemDelete(itemRef[0]));
+            error("delete", SecurityLibrary.LIBRARY.SecKeychainItemDelete(itemRef[0]));
         }
     }
 
-    private static void checkError(String msg, int code) throws IOException {
+    private static void error(String msg, int code) throws IOException {
         if (code != 0 && code != /* errSecItemNotFound, always returned from find it seems */-25300) {
             Pointer translated = SecurityLibrary.LIBRARY.SecCopyErrorMessageString(code, null);
             if (translated == null) {

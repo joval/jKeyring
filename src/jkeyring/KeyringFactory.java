@@ -58,14 +58,10 @@ import jkeyring.impl.win32.DPAPIEncryption;
 public class KeyringFactory {
     private static final IKeyring INSTANCE;
     static {
-	String osName = System.getProperty("os.name");
-	boolean windows = osName.toLowerCase().indexOf("windows") != -1;
-	boolean mac = osName.toLowerCase().indexOf("darwin") != -1;
-	if (!mac) {
-	    // Java 1.7 changes the value of os.name
-	    mac = osName.toLowerCase().startsWith("mac");
-	}
-	boolean linux = osName.toLowerCase().indexOf("linux") != -1;
+	String osName = System.getProperty("os.name").toLowerCase();
+	boolean windows = osName.indexOf("windows") != -1;
+	boolean mac = osName.indexOf("darwin") != -1 || osName.startsWith("mac");
+	boolean linux = osName.indexOf("linux") != -1;
 
 	if (windows) {
 	    INSTANCE = new CryptoProvider(new DPAPIEncryption());

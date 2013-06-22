@@ -86,6 +86,11 @@ public interface SecurityLibrary extends Library {
             Pointer itemRef
             );
 
+    int SecKeychainItemFreeContent(
+            Pointer attrList,
+            Pointer itemRef
+            );
+
     Pointer/*CFString*/ SecCopyErrorMessageString(
             int status,
             Pointer reserved
