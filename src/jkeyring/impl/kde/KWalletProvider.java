@@ -36,6 +36,8 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2010 Sun Microsystems, Inc.
  */
@@ -43,8 +45,8 @@
 package jkeyring.impl.kde;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.Arrays;
@@ -52,6 +54,7 @@ import java.util.MissingResourceException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import jkeyring.KeyringException;
 import jkeyring.intf.IKeyring;
 import jkeyring.impl.Base64;
 
@@ -68,52 +71,59 @@ public class KWalletProvider implements IKeyring {
 
     @Override
     public boolean enabled() {
-        CommandResult result = runCommand("isEnabled");
-        if(result.retVal.equals("true")) {        
-            return updateHandler();
-        }                   
+	try {
+            CommandResult result = runCommand("isEnabled");
+            if(result.retVal.equals("true")) {        
+        	return updateHandler();
+            }
+	} catch (Exception e) {
+	}
         return false;
     }
 
     @Override
-    public byte[] read(String key) throws IOException {
+    public byte[] read(String key) throws KeyringException {
         if (updateHandler()){
             CommandResult result = runCommand("readPassword", handler, appName, key, appName);
             if (result.exitCode != 0){
-                throw new KwalletException("read action returned not 0 exitCode");
+                throw new KeyringException("read action returned not 0 exitCode");
             }
-            return result.retVal.length() > 0 ? Base64.decode(result.retVal) : null;
+	    try {
+        	return result.retVal.length() > 0 ? Base64.decode(result.retVal) : null;
+	    } catch (IOException e) {
+		throw new KeyringException(e);
+	    }
         }
-        throw new KwalletException("read");
+        throw new KeyringException("read");
     }
 
     @Override
-    public void save(String key, byte[] data, String description) throws IOException {
+    public void save(String key, byte[] data, String description) throws KeyringException {
         //description is forgoten ! kdewallet dosen't have any facility to store
         //it by default and I don't want to do it by adding new fields to kwallet
         if (updateHandler()) {
             CommandResult result = runCommand("writePassword", handler , appName, key, Base64.encodeBytes(data), appName);
             if (result.exitCode != 0 || result.retVal.equals("-1")) {
-                throw new KwalletException("save action failed");
+                throw new KeyringException("save action failed");
             }
             return;
         }
-        throw new KwalletException("save");
+        throw new KeyringException("save");
     }
 
     @Override
-    public void delete(String key) throws IOException {
+    public void delete(String key) throws KeyringException {
         if (updateHandler()) {
             CommandResult result = runCommand("removeEntry", handler, appName, key, appName);
             if (result.exitCode != 0  || result.retVal.equals("-1")) {
-                throw new KwalletException("delete action failed");
+                throw new KeyringException("delete action failed");
             }
             return;
         }
-        throw new KwalletException("delete");
+        throw new KeyringException("delete");
     }
 
-    private boolean updateHandler() {
+    private boolean updateHandler() throws KeyringException {
         if(timeoutHappened) {
             return false;
         }
@@ -149,7 +159,7 @@ public class KWalletProvider implements IKeyring {
         return true;
     }
 
-    private CommandResult runCommand(String command, String... commandArgs) {
+    private CommandResult runCommand(String command, String... commandArgs) throws KeyringException {
         String[] argv = new String[commandArgs.length+4];
         argv[0] = "qdbus";
         argv[1] = "org.kde.kwalletd";
@@ -188,10 +198,8 @@ public class KWalletProvider implements IKeyring {
             input.close();
 
             exitCode = pr.waitFor();
-        } catch (InterruptedException ex) {
-	    ex.printStackTrace();
-        } catch (IOException ex) {
-	    ex.printStackTrace();
+        } catch (Exception e) {
+	    throw new KeyringException(e);
         }
         return new CommandResult(exitCode, retVal.trim(), errVal.trim());
     }
@@ -209,11 +217,5 @@ public class KWalletProvider implements IKeyring {
             this.retVal = retVal;
             this.errVal = errVal;
         }                        
-    }
-
-    static class KwalletException extends IOException {
-	KwalletException(String message) {
-	    super(message);
-	}
     }
 }

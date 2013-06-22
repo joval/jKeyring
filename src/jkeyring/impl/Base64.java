@@ -10,6 +10,9 @@
  * periodically to check for updates or to contribute improvements.
  * </p>
  *
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
+ *
  * @author Robert Harder
  * @author rob@iharder.net
  * @version 2.3.7

@@ -36,6 +36,8 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2009 Sun Microsystems, Inc.
  */
@@ -51,6 +53,7 @@ import java.util.logging.Logger;
 
 import com.sun.jna.Pointer;
 
+import jkeyring.KeyringException;
 import jkeyring.intf.IKeyring;
 import jkeyring.impl.Base64;
 import static jkeyring.impl.gnome.GnomeKeyringLibrary.*;
@@ -86,7 +89,7 @@ public class GnomeProvider implements IKeyring {
         }
     }
 
-    public @Override byte[] read(String key) throws IOException {
+    public @Override byte[] read(String key) throws KeyringException {
         Pointer[] found = new Pointer[1];
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
@@ -107,6 +110,8 @@ public class GnomeProvider implements IKeyring {
                         }
                     }
                 }
+            } catch (IOException e) {
+		throw new KeyringException(e);
             } finally {
                 LIBRARY.gnome_keyring_found_list_free(found[0]);
             }
@@ -114,7 +119,7 @@ public class GnomeProvider implements IKeyring {
         return null;
     }
 
-    public @Override void save(String key, byte[] data, String description) throws IOException {
+    public @Override void save(String key, byte[] data, String description) throws KeyringException {
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
             LIBRARY.gnome_keyring_attribute_list_append_string(attributes, KEY, key);
@@ -126,7 +131,7 @@ public class GnomeProvider implements IKeyring {
         }
     }
 
-    public @Override void delete(String key) throws IOException {
+    public @Override void delete(String key) throws KeyringException {
         Pointer[] found = new Pointer[1];
         Pointer attributes = LIBRARY.g_array_new(0, 0, GnomeKeyringAttribute_SIZE);
         try {
@@ -171,13 +176,13 @@ public class GnomeProvider implements IKeyring {
         "NO_MATCH", // NOI18N
     };
 
-    private static void error(int code) throws IOException {
+    private static void error(int code) throws KeyringException {
 	switch(code) {
 	  case 0:
 	  case 9:
 	    break;
 	  default:
-            throw new IOException("gnome-keyring error: " + ERRORS[code]);
+            throw new KeyringException("gnome-keyring error: " + ERRORS[code]);
         }
     }
 }

@@ -11,5 +11,6 @@ CLASSES=\
 	jkeyring.impl.win32.DPAPIEncryption	\
 	jkeyring.intf.IEncryptionProvider	\
 	jkeyring.intf.IKeyring	\
+	jkeyring.KeyringException	\
 	jkeyring.KeyringFactory	\
 	jkeyring.Test

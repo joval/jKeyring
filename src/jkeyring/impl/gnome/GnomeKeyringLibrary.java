@@ -36,6 +36,8 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2009 Sun Microsystems, Inc.
  */

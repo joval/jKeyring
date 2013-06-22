@@ -36,13 +36,14 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2009 Sun Microsystems, Inc.
  */
 
 package jkeyring.impl.crypto;
 
-import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -50,6 +51,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.prefs.Preferences;
 
+import jkeyring.KeyringException;
 import jkeyring.impl.Utils;
 import jkeyring.intf.IEncryptionProvider;
 import jkeyring.intf.IKeyring;
@@ -82,17 +84,15 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
         return false;
     }
 
-    public byte[] read(String key) throws IOException {
+    public byte[] read(String key) throws KeyringException {
         byte[] ciphertext = prefs().getByteArray(key, null);
         if (ciphertext == null) {
             return null;
         }
         try {
             return encryption.decrypt(ciphertext);
-        } catch (IOException e) {
-	    throw e;
         } catch (Exception e) {
-            throw new IOException(e);
+            throw new KeyringException(e);
         }
     }
 

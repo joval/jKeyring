@@ -36,13 +36,15 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2009 Sun Microsystems, Inc.
  */
 
 package jkeyring.intf;
 
-import java.io.IOException;
+import jkeyring.KeyringException;
 
 /**
  * Provider for a keyring.
@@ -62,7 +64,7 @@ public interface IKeyring {
      * @param key the identifier of the key
      * @return its value if found (elements may be later nulled out), else null if not present
      */
-    byte[] read(String key) throws IOException;
+    byte[] read(String key) throws KeyringException;
 
     /**
      * Save a key to the ring.
@@ -73,12 +75,12 @@ public interface IKeyring {
      *             (elements will be later nulled out)
      * @param description a user-visible description of the key (optional - may be null)
      */
-    void save(String key, byte[] data, String description) throws IOException;
+    void save(String key, byte[] data, String description) throws KeyringException;
 
     /**
      * Delete a key from the ring.
      * If the key was not in the ring to begin with, do nothing.
      * @param key a key identifier
      */
-    void delete(String key) throws IOException;
+    void delete(String key) throws KeyringException;
 }

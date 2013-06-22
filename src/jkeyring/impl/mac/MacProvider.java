@@ -36,13 +36,14 @@
  * made subject to such option by the copyright holder.
  *
  * Contributor(s):
+ * jOVAL.org elects to include this software in this distribution
+ * under the CDDL license.
  *
  * Portions Copyrighted 2009 Sun Microsystems, Inc.
  */
 
 package jkeyring.impl.mac;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.logging.Level;
@@ -50,6 +51,7 @@ import java.util.logging.Logger;
 
 import com.sun.jna.Pointer;
 
+import jkeyring.KeyringException;
 import jkeyring.intf.IKeyring;
 
 public class MacProvider implements IKeyring {
@@ -64,7 +66,7 @@ public class MacProvider implements IKeyring {
         return osName.startsWith("mac") || osName.indexOf("darwin") != -1;
     }
 
-    public byte[] read(String key) throws IOException {
+    public byte[] read(String key) throws KeyringException {
         byte[] serviceName = key.getBytes(UTF8);
         int[] dataLength = new int[1];
         Pointer[] data = new Pointer[1];
@@ -81,7 +83,7 @@ public class MacProvider implements IKeyring {
 	}
     }
 
-    public void save(String key, byte[] data, String description) throws IOException {
+    public void save(String key, byte[] data, String description) throws KeyringException {
         byte[] serviceName = key.getBytes(UTF8);
         // Keychain Access seems to expect UTF-8, so do not use Utils.chars2Bytes:
         Pointer[] itemRef = new Pointer[1];
@@ -96,7 +98,7 @@ public class MacProvider implements IKeyring {
         // TBD use description somehow... better to use SecItemAdd with kSecAttrDescription
     }
 
-    public void delete(String key) throws IOException {
+    public void delete(String key) throws KeyringException {
         byte[] serviceName = key.getBytes(UTF8);
         Pointer[] itemRef = new Pointer[1];
         error("find (for delete)", SecurityLibrary.LIBRARY.SecKeychainFindGenericPassword(null, serviceName.length, serviceName,
@@ -106,18 +108,18 @@ public class MacProvider implements IKeyring {
         }
     }
 
-    private static void error(String msg, int code) throws IOException {
+    private static void error(String msg, int code) throws KeyringException {
         if (code != 0 && code != /* errSecItemNotFound, always returned from find it seems */-25300) {
             Pointer translated = SecurityLibrary.LIBRARY.SecCopyErrorMessageString(code, null);
             if (translated == null) {
-                throw new IOException(String.valueOf(code));
+                throw new KeyringException(String.valueOf(code));
             } else {
                 char[] buf = new char[(int) SecurityLibrary.LIBRARY.CFStringGetLength(translated)];
                 for (int i = 0; i < buf.length; i++) {
                     buf[i] = SecurityLibrary.LIBRARY.CFStringGetCharacterAtIndex(translated, i);
                 }
                 SecurityLibrary.LIBRARY.CFRelease(translated);
-                throw new IOException(new String(buf) + " (" + code + ")");
+                throw new KeyringException(new String(buf) + " (" + code + ")");
             }
         }
     }
