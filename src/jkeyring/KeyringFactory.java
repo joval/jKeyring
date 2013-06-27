@@ -92,6 +92,19 @@ public class KeyringFactory {
      * Return the singleton default IKeyring instance. The default keyring can be employed if no native keyring is
      * available for use.
      *
+     * @param password The keyring master password.
+     */
+    public static final IKeyring getDefaultKeyring(char[] password) throws Exception {
+	if (DEFAULT == null) {
+	    DEFAULT = new CryptoProvider(new MasterPasswordEncryption(password));
+	}
+	return DEFAULT;
+    }
+
+    /**
+     * Return the singleton default IKeyring instance. The default keyring can be employed if no native keyring is
+     * available for use.
+     *
      * @param mode The method that should be used to collect a password from the user, when initializing the keyring.
      */
     public static final IKeyring getDefaultKeyring(IEncryptionProvider.Mode mode) {

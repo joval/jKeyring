@@ -95,21 +95,12 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 
     public MasterPasswordEncryption(Mode mode) {
 	this.mode = mode;
-	try {
-	    KEY_FACTORY = SecretKeyFactory.getInstance(ENCRYPTION_ALGORITHM);
-	    encrypt = Cipher.getInstance(ENCRYPTION_ALGORITHM);
-	    decrypt = Cipher.getInstance(ENCRYPTION_ALGORITHM);
-	    Preferences prefs = Utils.userPreferences().node("jKeyring");
-	    byte[] salt = prefs.getByteArray(PREFS_SALT_KEY, null);
-	    if (salt == null) {
-		salt = new byte[36];
-		new SecureRandom().nextBytes(salt);
-		prefs.putByteArray(PREFS_SALT_KEY, salt);
-	    }
-	    PARAM_SPEC = new PBEParameterSpec(salt, 20);
-	} catch (Exception e) {
-	    e.printStackTrace();
-	}
+	init();
+    }
+
+    public MasterPasswordEncryption(char[] password) throws Exception {
+	init();
+	unlock(password);
     }
 
     public boolean enabled() {
@@ -148,6 +139,33 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 
     // Internal
 
+    void init() {
+	try {
+	    KEY_FACTORY = SecretKeyFactory.getInstance(ENCRYPTION_ALGORITHM);
+	    encrypt = Cipher.getInstance(ENCRYPTION_ALGORITHM);
+	    decrypt = Cipher.getInstance(ENCRYPTION_ALGORITHM);
+	    Preferences prefs = Utils.userPreferences().node("jKeyring");
+	    byte[] salt = prefs.getByteArray(PREFS_SALT_KEY, null);
+	    if (salt == null) {
+		salt = new byte[36];
+		new SecureRandom().nextBytes(salt);
+		prefs.putByteArray(PREFS_SALT_KEY, salt);
+	    }
+	    PARAM_SPEC = new PBEParameterSpec(salt, 20);
+	} catch (Exception e) {
+	    e.printStackTrace();
+	}
+    }
+
+    void unlock(char[] masterPassword) throws Exception {
+	KeySpec keySpec = new PBEKeySpec(masterPassword);
+	Key key = KEY_FACTORY.generateSecret(keySpec);
+	encrypt.init(Cipher.ENCRYPT_MODE, key, PARAM_SPEC);
+	decrypt.init(Cipher.DECRYPT_MODE, key, PARAM_SPEC);
+	unlocked = true;
+	Arrays.fill(masterPassword, '0');
+    }
+
     void unlock() throws Exception {
 	char[] masterPassword = null;
 	if (newMasterPassword == null) {
@@ -162,12 +180,7 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	} else {
 	    masterPassword = newMasterPassword;
 	}
-	KeySpec keySpec = new PBEKeySpec(masterPassword);
-	Key key = KEY_FACTORY.generateSecret(keySpec);
-	encrypt.init(Cipher.ENCRYPT_MODE, key, PARAM_SPEC);
-	decrypt.init(Cipher.DECRYPT_MODE, key, PARAM_SPEC);
-	unlocked = true;
-	Arrays.fill(masterPassword, '0');
+	unlock(masterPassword);
     }
 
     byte[] doEncrypt(byte[] cleartext) throws Exception {
