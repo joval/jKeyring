@@ -44,22 +44,28 @@
 
 package jkeyring;
 
+import jkeyring.intf.IEncryptionProvider;
 import jkeyring.intf.IKeyring;
+import jkeyring.impl.crypto.CryptoProvider;
+import jkeyring.impl.crypto.MasterPasswordEncryption;
 
 public class Test {
     public static void main(String[] argv) {
 	try {
-	    IKeyring keyring = KeyringFactory.getKeyring();
-	    keyring.save("test", "my data".getBytes("US-ASCII"), "just some test data");
-	    byte[] data = keyring.read("test");
-	    if (data == null) {
-		System.out.println("failed");
-	    } else {
+	    IKeyring keyring = KeyringFactory.getDefaultKeyring(IEncryptionProvider.Mode.GUI);
+	    if (keyring.enabled()) {
+		byte[] data = keyring.read("test");
+		if (data == null) {
+		    keyring.save("test", "my data".getBytes("US-ASCII"), "just some test data");
+		    data = keyring.read("test");
+		}
 		System.out.println(new String(data, "US-ASCII"));
-		keyring.delete("test");
+	    } else {
+		System.out.println("Keyring is not enabled");
 	    }
 	} catch (Exception e) {
 	    e.printStackTrace();
 	}
+	System.exit(0);
     }
 }

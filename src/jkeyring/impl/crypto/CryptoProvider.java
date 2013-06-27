@@ -149,10 +149,10 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
                     if (new String(encryption.decrypt(ciphertext)).startsWith(SAMPLE_KEY)) {
                         return true;
                     }
-                } catch (Exception x) {
-                    x.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                return !encryption.decryptionFailed();
+                return encryption.decryptionFailed();
             }
         }
     }

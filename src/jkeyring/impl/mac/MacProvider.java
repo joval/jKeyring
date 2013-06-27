@@ -63,7 +63,7 @@ public class MacProvider implements IKeyring {
 
     public boolean enabled() {
 	String osName = System.getProperty("os.name").toLowerCase();
-        return osName.startsWith("mac") || osName.indexOf("darwin") != -1;
+        return osName.indexOf("darwin") != -1;
     }
 
     public byte[] read(String key) throws KeyringException {

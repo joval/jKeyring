@@ -47,6 +47,7 @@ package jkeyring.impl.crypto;
 import java.awt.EventQueue;
 import java.awt.GridLayout;
 import java.security.Key;
+import java.io.Console;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
@@ -66,7 +67,6 @@ import javax.swing.JPasswordField;
 import javax.swing.JPanel;
 import javax.swing.JLabel;
 
-
 import jkeyring.impl.Utils;
 import jkeyring.intf.IEncryptionProvider;
 
@@ -74,6 +74,10 @@ import jkeyring.intf.IEncryptionProvider;
  * Encrypts data using a master password governed by Preferences.
  */
 public class MasterPasswordEncryption implements IEncryptionProvider {
+    public static final int BACKSPACE = '';
+    public static final int CR = '\r';
+    public static final int LF = '\n';
+
     public static final String PREFS_SALT_KEY = "salt";
 
     private static final String ENCRYPTION_ALGORITHM = "PBEWithSHA1AndDESede"; // NOI18N
@@ -85,10 +89,12 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
     private Cipher encrypt, decrypt;
     private boolean unlocked;
     private Callable<Void> encryptionChanging;
-    private char[] newMasterPassword;
+    private char[] newMasterPassword = null;
     private boolean fresh;
+    private Mode mode;
 
-    public MasterPasswordEncryption() {
+    public MasterPasswordEncryption(Mode mode) {
+	this.mode = mode;
 	try {
 	    KEY_FACTORY = SecretKeyFactory.getInstance(ENCRYPTION_ALGORITHM);
 	    encrypt = Cipher.getInstance(ENCRYPTION_ALGORITHM);
@@ -101,9 +107,8 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 		prefs.putByteArray(PREFS_SALT_KEY, salt);
 	    }
 	    PARAM_SPEC = new PBEParameterSpec(salt, 20);
-	    new PasswordDialog().prompt();
-	} catch (Exception x) {
-	    x.printStackTrace();
+	} catch (Exception e) {
+	    e.printStackTrace();
 	}
     }
 
@@ -118,9 +123,9 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
     public byte[] encrypt(byte[] cleartext) throws Exception {
 	try {
 	    return doEncrypt(cleartext);
-	} catch (Exception x) {
+	} catch (Exception e) {
 	    unlocked = false; // reset
-	    throw x;
+	    throw e;
 	}
     }
 
@@ -128,39 +133,71 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	AtomicBoolean callEncryptionChanging = new AtomicBoolean();
 	try {
 	    return doDecrypt(ciphertext);
-	} catch (Exception x) {
+	} catch (Exception e) {
 	    unlocked = false; // reset
-	    throw x;
+	    throw e;
 	} finally {
 	    if (callEncryptionChanging.get()) {
 		try {
 		    encryptionChanging.call();
-		} catch (Exception x) {
+		} catch (Exception e) {
 		}
 	    }
 	}
     }
 
-    void unlock(char[] masterPassword) throws Exception {
+    // Internal
+
+    void unlock() throws Exception {
+	char[] masterPassword = null;
+	if (newMasterPassword == null) {
+	    switch(mode) {
+	      case GUI:
+		masterPassword = new PasswordDialog().prompt();
+		break;
+	      case CLI:
+		masterPassword = getPassword();
+		break;
+	    }
+	} else {
+	    masterPassword = newMasterPassword;
+	}
 	KeySpec keySpec = new PBEKeySpec(masterPassword);
 	Key key = KEY_FACTORY.generateSecret(keySpec);
 	encrypt.init(Cipher.ENCRYPT_MODE, key, PARAM_SPEC);
 	decrypt.init(Cipher.DECRYPT_MODE, key, PARAM_SPEC);
 	unlocked = true;
+	Arrays.fill(masterPassword, '0');
     }
 
     byte[] doEncrypt(byte[] cleartext) throws Exception {
+	if (!unlocked) {
+	    unlock();
+	}
 	assert unlocked;
 	return encrypt.doFinal(cleartext);
     }
 
     byte[] doDecrypt(byte[] ciphertext) throws Exception {
+	if (!unlocked) {
+	    unlock();
+	}
 	assert unlocked;
 	return decrypt.doFinal(ciphertext);
     }
 
     public boolean decryptionFailed() {
 	unlocked = false;
+	switch(mode) {
+	  case GUI:
+	    JOptionPane.showMessageDialog(new JFrame(), "Failed to open keyring", "Password incorrect",
+		JOptionPane.ERROR_MESSAGE);
+	    break;
+	  case CLI:
+	    System.err.println("*** Password Incorrect ***");
+	    System.out.println("Failed to open keyring");
+	    break;
+	}
 	return false;
     }
 
@@ -171,9 +208,9 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
     public void encryptionChanged() {
 	assert newMasterPassword != null;
 	try {
-	    unlock(newMasterPassword);
-	} catch (Exception x) {
-	    x.printStackTrace();
+	    unlock();
+	} catch (Exception e) {
+	    e.printStackTrace();
 	}
 	Arrays.fill(newMasterPassword, '\0');
 	newMasterPassword = null;
@@ -183,54 +220,81 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	this.fresh = fresh;
     }
 
-    // Inner Class
+    // Private 
 
-    public class PasswordDialog implements Runnable {
-	private JFrame guiFrame;
+    /**
+     * Obtain the master password using the command-line.
+     */
+    private char[] getPassword() throws Exception {
+	return System.console().readPassword("%s", "Master password: ");
+    }
+
+    /**
+     * Obtain the master password using a dialog box.
+     */
+    class PasswordDialog {
 	private JPanel userPanel;
-	private JPasswordField passwordFld;
+	private JPasswordField passwordField, confirmField = null;
+	private String title;
 
 	PasswordDialog() {
-	    EventQueue.invokeLater(this);
+	    this(null);
 	}
 
-	// Implement Runnable
-	 
-	public void run() {
-	    guiFrame = new JFrame();
-	    guiFrame.setTitle("jKeyring Master Password");
-	    guiFrame.setSize(500, 200);
-
-	    //This will center the JFrame in the middle of the screen
-	    guiFrame.setLocationRelativeTo(null);
-
-	    //Using a JPanel as the message for the JOptionPane
+	private PasswordDialog(String title) {
+	    this.title = title;
+	    passwordField = new JPasswordField(10);
 	    userPanel = new JPanel();
-	    userPanel.setLayout(new GridLayout(1,2));
+	    if (fresh) {
+		if (title == null) {
+		    this.title = "Enter a password for the new keyring";
+		}
+		userPanel.setLayout(new GridLayout(2,2));
 
-	    JLabel passwordLbl = new JLabel("Password:");
-	    passwordFld = new JPasswordField();
+		// first row
+		userPanel.add(new JLabel("New Master Password:", JLabel.RIGHT));
+		userPanel.add(passwordField);
 
-	    userPanel.add(passwordLbl);
-	    userPanel.add(passwordFld);
+		// second row
+		userPanel.add(new JLabel("Confirm Password:", JLabel.RIGHT));
+		confirmField = new JPasswordField(10);
+		userPanel.add(confirmField);
+	    } else {
+		if (title == null) {
+		    this.title = "Enter master password";
+		}
+		userPanel.setLayout(new GridLayout(1,2));
 
-	    guiFrame.setVisible(true);
+		// single row
+		userPanel.add(new JLabel("Master Password:", JLabel.CENTER));
+		userPanel.add(passwordField);
+	    }
 	}
 
-	void prompt() throws Exception {
-	    //As the JOptionPane accepts an object as the message
-	    //it allows us to use any component we like - in this case 
-	    //a JPanel containing the dialog components we want
-	    int input = JOptionPane.showConfirmDialog(guiFrame, userPanel, "Enter your password:"
-				,JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+	char[] prompt() throws Exception {
+	    //
+	    // As the JOptionPane accepts an object as the message
+	    // it allows us to use any component we like - in this case 
+	    // a JPanel containing the dialog components we want
+	    //
+	    int input = JOptionPane.showConfirmDialog(new JFrame(), userPanel, title, JOptionPane.OK_CANCEL_OPTION,
+		JOptionPane.PLAIN_MESSAGE);
 
 	    //OK Button = 0
 	    if (input == 0) {
-		char[] password = passwordFld.getPassword();
-		MasterPasswordEncryption.this.unlock(password);
-		Arrays.fill(password, '0');
+		if (confirmField == null) {
+		    return passwordField.getPassword();
+		} else {
+		    if (Arrays.equals(passwordField.getPassword(), confirmField.getPassword())) {
+			Arrays.fill(confirmField.getPassword(), '0');
+			return passwordField.getPassword();
+		    } else {
+			return new PasswordDialog("Mismatch, try again:").prompt();
+		    }
+		}
+	    } else {
+		throw new Exception("cancelled");
 	    }
-	    guiFrame.setVisible(false);
 	}
     }
 }

@@ -44,6 +44,7 @@
 
 package jkeyring;
 
+import jkeyring.intf.IEncryptionProvider;
 import jkeyring.intf.IKeyring;
 import jkeyring.impl.crypto.CryptoProvider;
 import jkeyring.impl.crypto.MasterPasswordEncryption;
@@ -56,38 +57,47 @@ import jkeyring.impl.win32.DPAPIEncryption;
  * The factory class for obtaining the system keyring.
  */
 public class KeyringFactory {
-    private static final IKeyring INSTANCE;
+    private static IKeyring NATIVE = null, DEFAULT = null;
     static {
 	String osName = System.getProperty("os.name").toLowerCase();
 	boolean windows = osName.indexOf("windows") != -1;
-	boolean mac = osName.indexOf("darwin") != -1 || osName.startsWith("mac");
+	boolean mac = osName.indexOf("darwin") != -1;
 	boolean linux = osName.indexOf("linux") != -1;
 
 	if (windows) {
-	    INSTANCE = new CryptoProvider(new DPAPIEncryption());
+	    NATIVE = new CryptoProvider(new DPAPIEncryption());
 	} else if (mac) {
-	    INSTANCE = new MacProvider();
+	    NATIVE = new MacProvider();
 	} else if (linux) {
 	    IKeyring gk = new GnomeProvider();
 	    if (gk.enabled()) {
-		INSTANCE = gk;
+		NATIVE = gk;
 	    } else {
 		IKeyring kk = new KWalletProvider();
 		if (kk.enabled()) {
-		    INSTANCE = kk;
-		} else {
-		    INSTANCE = new CryptoProvider(new MasterPasswordEncryption());
+		    NATIVE = kk;
 		}
 	    }
-	} else {
-	    INSTANCE = new CryptoProvider(new MasterPasswordEncryption());
 	}
     }
 
     /**
-     * Return the singleton IKeyring instance.
+     * Return the singleton native IKeyring instance (or null if there isn't one).
      */
-    public static final IKeyring getKeyring() {
-	return INSTANCE;
+    public static final IKeyring getNativeKeyring() {
+	return NATIVE;
+    }
+
+    /**
+     * Return the singleton default IKeyring instance. The default keyring can be employed if no native keyring is
+     * available for use.
+     *
+     * @param mode The method that should be used to collect a password from the user, when initializing the keyring.
+     */
+    public static final IKeyring getDefaultKeyring(IEncryptionProvider.Mode mode) {
+	if (DEFAULT == null) {
+	    DEFAULT = new CryptoProvider(new MasterPasswordEncryption(mode));
+	}
+	return DEFAULT;
     }
 }

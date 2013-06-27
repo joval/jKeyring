@@ -56,6 +56,20 @@ import java.util.concurrent.Callable;
  * a standard implementation exists (at position 1000) which uses a simple master password.
  */
 public interface IEncryptionProvider {
+    /**
+     * Modes for user-interaction.
+     */
+    enum Mode {
+        /**
+         * User interaction should be performed graphically.
+         */
+        GUI,
+
+        /**
+         * User interaction should be performed via the command-line.
+         */
+        CLI;
+    }
 
     /**
      * Check whether this provider can be used in the current JVM session.
