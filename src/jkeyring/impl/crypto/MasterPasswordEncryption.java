@@ -153,10 +153,10 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	if (newMasterPassword == null) {
 	    switch(mode) {
 	      case GUI:
-		masterPassword = new PasswordDialog().prompt();
+		masterPassword = getPasswordGUI(null);
 		break;
 	      case CLI:
-		masterPassword = getPassword();
+		masterPassword = getPasswordCLI(null);
 		break;
 	    }
 	} else {
@@ -225,76 +225,79 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
     /**
      * Obtain the master password using the command-line.
      */
-    private char[] getPassword() throws Exception {
-	return System.console().readPassword("%s", "Master password: ");
+    private char[] getPasswordCLI(String message) throws Exception {
+	if (message != null) {
+	    System.out.println(message);
+	}
+	if (fresh) {
+	    if (message == null) {
+		System.out.println("Creating a new keyring...");
+	    }
+	    char[] password = System.console().readPassword("%s", "New master password: ");
+	    char[] confirm = System.console().readPassword("%s", "Confirm password: ");
+	    if (Arrays.equals(password, confirm)) {
+		Arrays.fill(confirm, '0');
+		return password;
+	    } else {
+		Arrays.fill(password, '0');
+		Arrays.fill(confirm, '0');
+		return getPasswordCLI("Mismatch, try again...");
+	    }
+	} else {
+	    return System.console().readPassword("%s", "Master password: ");
+	}
     }
 
     /**
      * Obtain the master password using a dialog box.
      */
-    class PasswordDialog {
-	private JPanel userPanel;
-	private JPasswordField passwordField, confirmField = null;
-	private String title;
-
-	PasswordDialog() {
-	    this(null);
-	}
-
-	private PasswordDialog(String title) {
-	    this.title = title;
-	    passwordField = new JPasswordField(10);
-	    userPanel = new JPanel();
-	    if (fresh) {
-		if (title == null) {
-		    this.title = "Enter a password for the new keyring";
-		}
-		userPanel.setLayout(new GridLayout(2,2));
-
-		// first row
-		userPanel.add(new JLabel("New Master Password:", JLabel.RIGHT));
-		userPanel.add(passwordField);
-
-		// second row
-		userPanel.add(new JLabel("Confirm Password:", JLabel.RIGHT));
-		confirmField = new JPasswordField(10);
-		userPanel.add(confirmField);
-	    } else {
-		if (title == null) {
-		    this.title = "Enter master password";
-		}
-		userPanel.setLayout(new GridLayout(1,2));
-
-		// single row
-		userPanel.add(new JLabel("Master Password:", JLabel.CENTER));
-		userPanel.add(passwordField);
+    private char[] getPasswordGUI(String title) throws Exception {
+	JPasswordField passwordField = new JPasswordField(10);
+	JPasswordField confirmField = null;
+	JPanel userPanel = new JPanel();
+	if (fresh) {
+	    if (title == null) {
+		title = "Enter a password for the new keyring";
 	    }
+	    userPanel.setLayout(new GridLayout(2,2));
+
+	    // first row
+	    userPanel.add(new JLabel("New Master Password:", JLabel.RIGHT));
+	    userPanel.add(passwordField);
+
+	    // second row
+	    userPanel.add(new JLabel("Confirm Password:", JLabel.RIGHT));
+	    confirmField = new JPasswordField(10);
+	    userPanel.add(confirmField);
+	} else {
+	    if (title == null) {
+		title = "Enter master password";
+	    }
+	    userPanel.setLayout(new GridLayout(1,2));
+
+	    // single row
+	    userPanel.add(new JLabel("Master Password:", JLabel.CENTER));
+	    userPanel.add(passwordField);
 	}
 
-	char[] prompt() throws Exception {
-	    //
-	    // As the JOptionPane accepts an object as the message
-	    // it allows us to use any component we like - in this case 
-	    // a JPanel containing the dialog components we want
-	    //
-	    int input = JOptionPane.showConfirmDialog(new JFrame(), userPanel, title, JOptionPane.OK_CANCEL_OPTION,
+	int input = JOptionPane.showConfirmDialog(new JFrame(), userPanel, title, JOptionPane.OK_CANCEL_OPTION,
 		JOptionPane.PLAIN_MESSAGE);
 
-	    //OK Button = 0
-	    if (input == 0) {
-		if (confirmField == null) {
+	if (input == 0) { // OK Button = 0
+	    if (confirmField == null) {
+		return passwordField.getPassword();
+	    } else {
+		if (Arrays.equals(passwordField.getPassword(), confirmField.getPassword())) {
+		    Arrays.fill(confirmField.getPassword(), '0');
 		    return passwordField.getPassword();
 		} else {
-		    if (Arrays.equals(passwordField.getPassword(), confirmField.getPassword())) {
-			Arrays.fill(confirmField.getPassword(), '0');
-			return passwordField.getPassword();
-		    } else {
-			return new PasswordDialog("Mismatch, try again:").prompt();
-		    }
+		    Arrays.fill(passwordField.getPassword(), '0');
+		    Arrays.fill(confirmField.getPassword(), '0');
+		    return getPasswordGUI("Mismatch, try again:");
 		}
-	    } else {
-		throw new Exception("cancelled");
 	    }
+	} else {
+	    throw new Exception("cancelled");
 	}
     }
 }
