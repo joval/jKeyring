@@ -3,7 +3,7 @@ Default: all
 TOP=../..
 
 ifndef JAVA_HOME
-    JAVA_HOME=$(TOP)/tools/jdk1.7.0_21
+    JAVA_HOME=$(TOP)/tools/jdk1.6.0_26
 endif
 
 ifeq (Windows, $(findstring Windows,$(OS)))
@@ -36,9 +36,11 @@ CLASS_FILES:=$(foreach class, $(CLASSES), $(BUILD)/$(subst .,/,$(class)).class)
 PACKAGES=$(sort $(basename $(CLASSES)))
 PACKAGEDIRS=$(subst .,/,$(PACKAGES))
 
-all: jKeyring.jar
+JKEYRING=jKeyring.jar
 
-jKeyring.jar: classes
+all: $(JKEYRING)
+
+$(JKEYRING): classes
 	$(JAR) cvf $@ -C $(BUILD)/ .
 
 javadocs:
@@ -46,7 +48,7 @@ javadocs:
 	$(JAVA_HOME)/bin/javadoc -d $(DOCS) -classpath $(CLASSPATH) $(PACKAGES)
 
 clean:
-	rm -f jKeyring.jar
+	rm -f $(JKEYRING)
 	rm -rf $(BUILD)
 
 classes: classdirs $(CLASS_FILES)
@@ -60,4 +62,4 @@ $(BUILD)/%/:
 	mkdir -p $(subst PKG,,$@)
 
 test:
-	$(JAVA) -classpath "$(LIB)$(CLN)jKeyring.jar" jkeyring.Test
+	$(JAVA) -classpath "$(LIB)$(CLN)$(JKEYRING)" jkeyring.Test
