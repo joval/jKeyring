@@ -61,7 +61,7 @@ public class KeyringFactory {
     static {
 	String osName = System.getProperty("os.name").toLowerCase();
 	boolean windows = osName.indexOf("windows") != -1;
-	boolean mac = osName.indexOf("darwin") != -1;
+	boolean mac = osName.indexOf("mac") != -1;
 	boolean linux = osName.indexOf("linux") != -1;
 
 	if (windows) {
