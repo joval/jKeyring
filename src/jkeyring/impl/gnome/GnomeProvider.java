@@ -80,8 +80,10 @@ public class GnomeProvider implements IKeyring {
             if (!LIBRARY.gnome_keyring_is_available()) {
                 return false;
             }
-            // #178571: try to read some key just to make sure gnome_keyring_find_password_sync is bound:
-            read("NoNeXiStEnT"); // NOI18N
+            // Make sure the library is bound by writing, reading and deleting a test key
+            save("jKeyring-test", new byte[]{'0'}, null);
+            read("jKeyring-test");
+            delete("jKeyring-test");
             return true;
         } catch (Throwable t) {
             t.printStackTrace();
