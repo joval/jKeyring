@@ -75,104 +75,104 @@ public class CryptoProvider implements IKeyring, Callable<Void> {
     // Implement IKeyring
  
     public boolean enabled() {
-        if (encryption != null) {
-            if (encryption.enabled()) {
-                encryption.encryptionChangingCallback(this);
-                return testSampleKey(prefs());
-            }
-        }
-        return false;
+	if (encryption != null) {
+	    if (encryption.enabled()) {
+		encryption.encryptionChangingCallback(this);
+		return testSampleKey(prefs());
+	    }
+	}
+	return false;
     }
 
     public byte[] read(String key) throws KeyringException {
-        byte[] ciphertext = prefs().getByteArray(key, null);
-        if (ciphertext == null) {
-            return null;
-        }
-        try {
-            return encryption.decrypt(ciphertext);
-        } catch (Exception e) {
-            throw new KeyringException(e);
-        }
+	byte[] ciphertext = prefs().getByteArray(key, null);
+	if (ciphertext == null) {
+	    return null;
+	}
+	try {
+	    return encryption.decrypt(ciphertext);
+	} catch (Exception e) {
+	    throw new KeyringException(e);
+	}
     }
 
-    public void save(String key, byte[] data, String description) {
-        _save(key, data, description);
+    public void save(String key, byte[] data, String description) throws KeyringException {
+	try {
+	    _save(key, data, description);
+	} catch (Exception e) {
+	    throw new KeyringException(e);
+	}
     }
 
     public void delete(String key) {
-        Preferences prefs = prefs();
-        prefs.remove(key);
-        prefs.remove(key + DESCRIPTION);
+	Preferences prefs = prefs();
+	prefs.remove(key);
+	prefs.remove(key + DESCRIPTION);
     }
 
     // Implement Callable<Void>
 
     // encryption changing
     public Void call() throws Exception {
-        Map<String, byte[]> saved = new HashMap<String, byte[]>();
-        Preferences prefs = prefs();
-        for (String k : prefs.keys()) {
-            if (k.endsWith(DESCRIPTION)) {
-                continue;
-            }
-            byte[] ciphertext = prefs.getByteArray(k, null);
-            if (ciphertext == null) {
-                continue;
-            }
-            saved.put(k, encryption.decrypt(ciphertext));
-        }
-        encryption.encryptionChanged();
-        for (Map.Entry<String, byte[]> entry : saved.entrySet()) {
-            prefs.putByteArray(entry.getKey(), encryption.encrypt(entry.getValue()));
-        }
-        return null;
+	Map<String, byte[]> saved = new HashMap<String, byte[]>();
+	Preferences prefs = prefs();
+	for (String k : prefs.keys()) {
+	    if (k.endsWith(DESCRIPTION)) {
+		continue;
+	    }
+	    byte[] ciphertext = prefs.getByteArray(k, null);
+	    if (ciphertext == null) {
+		continue;
+	    }
+	    saved.put(k, encryption.decrypt(ciphertext));
+	}
+	encryption.encryptionChanged();
+	for (Map.Entry<String, byte[]> entry : saved.entrySet()) {
+	    prefs.putByteArray(entry.getKey(), encryption.encrypt(entry.getValue()));
+	}
+	return null;
     }
 
     // Private
     
     private boolean testSampleKey(Preferences prefs) {
-        byte[] ciphertext = prefs.getByteArray(SAMPLE_KEY, null);
-        if (ciphertext == null) {
-            encryption.freshKeyring(true);
-            byte[] randomArray = new byte[36];
-            new SecureRandom().nextBytes(randomArray);
-            if (_save(SAMPLE_KEY, (SAMPLE_KEY + new String(randomArray)).getBytes(), "Sample key")) {
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            encryption.freshKeyring(false);
-            while (true) {
-                try {
-                    if (new String(encryption.decrypt(ciphertext)).startsWith(SAMPLE_KEY)) {
-                        return true;
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return encryption.decryptionFailed();
-            }
-        }
+	byte[] ciphertext = prefs.getByteArray(SAMPLE_KEY, null);
+	if (ciphertext == null) {
+	    encryption.freshKeyring(true);
+	    byte[] randomArray = new byte[36];
+	    new SecureRandom().nextBytes(randomArray);
+	    try {
+		_save(SAMPLE_KEY, (SAMPLE_KEY + new String(randomArray)).getBytes(), "Sample key");
+		return true;
+	    } catch (Exception e) {
+		e.printStackTrace();
+		return false;
+	    }
+	} else {
+	    encryption.freshKeyring(false);
+	    while (true) {
+		try {
+		    if (new String(encryption.decrypt(ciphertext)).startsWith(SAMPLE_KEY)) {
+			return true;
+		    }
+		} catch (Exception e) {
+		    e.printStackTrace();
+		}
+		return encryption.decryptionFailed();
+	    }
+	}
     }
 
     private Preferences prefs() {
-        return Utils.userPreferences().node("jKeyring").node(encryption.id());
+	return Utils.userPreferences().node("jKeyring").node(encryption.id());
     }
 
-    private boolean _save(String key, byte[] data, String description) {
-        Preferences prefs = prefs();
-        try {
-            prefs.putByteArray(key, encryption.encrypt(data));
-        } catch (Exception x) {
-            x.printStackTrace();
-            return false;
-        }
-        if (description != null) {
-            // Preferences interface gives no access to *.properties comments, so:
-            prefs.put(key + DESCRIPTION, description);
-        }
-        return true;
+    private void _save(String key, byte[] data, String description) throws Exception {
+	Preferences prefs = prefs();
+	prefs.putByteArray(key, encryption.encrypt(data));
+	if (description != null) {
+	    // Preferences interface gives no access to *.properties comments, so:
+	    prefs.put(key + DESCRIPTION, description);
+	}
     }
 }
