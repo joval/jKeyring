@@ -44,7 +44,9 @@
 
 package jkeyring;
 
-public class KeyringException extends Exception {
+import java.security.KeyStoreException;
+
+public class KeyringException extends KeyStoreException {
     public KeyringException() {
 	super();
     }
