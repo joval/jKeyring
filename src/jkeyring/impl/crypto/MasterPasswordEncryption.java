@@ -112,11 +112,19 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
     }
 
     public byte[] encrypt(byte[] cleartext) throws Exception {
+	AtomicBoolean callEncryptionChanging = new AtomicBoolean();
 	try {
 	    return doEncrypt(cleartext);
 	} catch (Exception e) {
-	    unlocked = false; // reset
+	    decryptionFailed();
 	    throw e;
+	} finally {
+	    if (callEncryptionChanging.get()) {
+		try {
+		    encryptionChanging.call();
+		} catch (Exception e) {
+		}
+	    }
 	}
     }
 
@@ -125,7 +133,7 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	try {
 	    return doDecrypt(ciphertext);
 	} catch (Exception e) {
-	    unlocked = false; // reset
+	    decryptionFailed();
 	    throw e;
 	} finally {
 	    if (callEncryptionChanging.get()) {
@@ -188,7 +196,9 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	    unlock();
 	}
 	assert unlocked;
-	return encrypt.doFinal(cleartext);
+	synchronized(encrypt) {
+	    return encrypt.doFinal(cleartext);
+	}
     }
 
     byte[] doDecrypt(byte[] ciphertext) throws Exception {
@@ -196,7 +206,9 @@ public class MasterPasswordEncryption implements IEncryptionProvider {
 	    unlock();
 	}
 	assert unlocked;
-	return decrypt.doFinal(ciphertext);
+	synchronized(decrypt) {
+	    return decrypt.doFinal(ciphertext);
+	}
     }
 
     public boolean decryptionFailed() {

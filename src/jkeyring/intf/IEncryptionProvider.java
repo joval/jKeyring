@@ -136,5 +136,4 @@ public interface IEncryptionProvider {
      * @param fresh true if this is a new keyring, false if it has been used before
      */
     void freshKeyring(boolean fresh);
-
 }
