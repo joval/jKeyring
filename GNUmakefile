@@ -26,7 +26,7 @@ $(JKEYRING): classes
 
 javadocs:
 	mkdir -p $(DOCS)
-	$(JAVA_HOME)/bin/javadoc -d $(DOCS) -classpath $(CLASSPATH) $(PACKAGES)
+	$(JAVADOC) -d $(DOCS) -classpath $(CLASSPATH) $(PACKAGES)
 
 clean:
 	rm -f $(JKEYRING)
