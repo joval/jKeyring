@@ -13,4 +13,5 @@ CLASSES=\
 	jkeyring.intf.IKeyring	\
 	jkeyring.KeyringException	\
 	jkeyring.KeyringFactory	\
-	jkeyring.Test
+	jkeyring.Test\
+	jkeyring.Test2

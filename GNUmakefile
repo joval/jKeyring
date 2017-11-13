@@ -43,4 +43,4 @@ $(BUILD)/%/:
 	mkdir -p $(subst PKG,,$@)
 
 test:
-	$(JAVA) -classpath "$(LIB)$(CLN)$(JKEYRING)" jkeyring.Test
+	$(JAVA) -classpath "$(LIB)$(CLN)$(JKEYRING)" jkeyring.Test2
