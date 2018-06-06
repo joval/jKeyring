@@ -52,7 +52,11 @@ import jkeyring.impl.crypto.MasterPasswordEncryption;
 public class Test {
     public static void main(String[] argv) {
 	try {
-	    IKeyring keyring = KeyringFactory.getDefaultKeyring(IEncryptionProvider.Mode.GUI);
+	    IKeyring keyring = KeyringFactory.getNativeKeyring();
+	    if (keyring == null) {
+		System.out.println("No native keyring, using default");
+		keyring = KeyringFactory.getDefaultKeyring(IEncryptionProvider.Mode.GUI);
+	    }
 	    if (keyring.enabled()) {
 		byte[] data = keyring.read("test");
 		if (data == null) {
